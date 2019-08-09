@@ -62,7 +62,7 @@
     <enum>Qt::Horizontal</enum>
    </property>
   </widget>
-  <widget class="QLineEdit" name="lineEdit_4">
+  <widget class="QLineEdit" name="leAddress">
    <property name="geometry">
     <rect>
      <x>250</x>
@@ -153,7 +153,7 @@
     <string>Open Config File</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButton_4">
+  <widget class="QPushButton" name="btnAdd">
    <property name="geometry">
     <rect>
      <x>410</x>
@@ -184,7 +184,7 @@
     <string>Name</string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="lineEdit_5">
+  <widget class="QLineEdit" name="leName">
    <property name="geometry">
     <rect>
      <x>160</x>

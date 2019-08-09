@@ -17,15 +17,15 @@ class ControllerWidget(QWidget):
 
         self.connection = connection
         self.name = name
-        self.address = address
+        self.address = int(address)
         self.mode = mode
 
         self.ui.labelName.setText(self.name)
         self.ui.labelAddress.setText(str(self.address))
         self.ui.cbMode.addItems(['Off', 'Heat', 'Cool'])
-        if mode == 'cool':
+        if mode.lower() == 'cool':
             self.ui.cbMode.setCurrentIndex(2)
-        elif mode == 'heat':
+        elif mode.lower() == 'heat':
             self.ui.cbMode.setCurrentIndex(1)
 
         self.controller = PM3(self.connection, address=self.address)

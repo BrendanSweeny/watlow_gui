@@ -8,6 +8,7 @@ class ConfigTabWidget(QWidget):
 
     fnameEmitted = pyqtSignal(str)
     tabIndexEmitted = pyqtSignal(int)
+    manualAddEmitted = pyqtSignal(object)
 
     def __init__(self):
         super().__init__()
@@ -17,6 +18,11 @@ class ConfigTabWidget(QWidget):
 
         self.ui.btnOpenConfig.clicked.connect(self.handleOpenConfig)
 
+        self.ui.cbMode.addItem('Heat')
+        self.ui.cbMode.addItem('Cool')
+
+        self.ui.btnAdd.clicked.connect(self.manualAdd)
+
     def handleOpenConfig(self):
         fileName = QFileDialog.getOpenFileName(self, 'Open File', filter='*.ini')
         #self.parseConfigFile(fileName)
@@ -24,6 +30,13 @@ class ConfigTabWidget(QWidget):
             self.fnameEmitted.emit(fileName[0])
             # Change to control tab:
             self.tabIndexEmitted.emit(0)
+
+    def manualAdd(self):
+        name = self.ui.leName.text()
+        address = int(self.ui.leAddress.text())
+        modeIndex = self.ui.cbMode.currentIndex()
+        mode = self.ui.cbMode.itemText(modeIndex).lower()
+        self.manualAddEmitted.emit((name, address, mode))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

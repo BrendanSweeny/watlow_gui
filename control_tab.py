@@ -42,7 +42,7 @@ class ControlTabWidget(QWidget):
         self.controllerWidgets = None
 
         # Dictionary that contains controllerWidgets by address/object key/val pairs
-        self.controllerWidgetsDict = None
+        self.controllerWidgetsDict = {}
 
         # Timer that reads controller values at specified interval
         self.readTimer = QTimer(self)
@@ -77,6 +77,17 @@ class ControlTabWidget(QWidget):
         self.ui.btn500K.clicked.connect(lambda: self.handleSetTempAll(500))
         self.ui.btn600K.clicked.connect(lambda: self.handleSetTempAll(600))
         self.ui.btn700K.clicked.connect(lambda: self.handleSetTempAll(700))
+
+    def handleManualAdd(self, controllerInfo):
+        print(controllerInfo)
+        name = controllerInfo[0]
+        address = controllerInfo[1]
+        mode = controllerInfo[2]
+        controllerWidget = ControllerWidget(self.serial, name, address, mode)
+        #self.deleteWidget(self.controllerWidgetsDict[address])
+        self.controllerWidgetsDict[address] = controllerWidget
+        self.scrollWidgetLayout.addWidget(controllerWidget)
+        controllerWidget.widgetEmitted.connect(self.deleteWidget)
 
     def clearLayout(self):
         for i in reversed(range(self.scrollWidgetLayout.count())):
@@ -194,7 +205,7 @@ class ControlTabWidget(QWidget):
         '''
         Toggles connection to the serial port selected with the serial combo box
         and handles initial program behavior:
-        
+
         * Sends connect/disconnect message
         * Changes connect button text
         * Changes/blinks LEDs

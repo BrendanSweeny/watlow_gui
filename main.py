@@ -21,6 +21,7 @@ class MainWindow(QMainWindow):
         self.configTabWidget.fnameEmitted.connect(self.controlTabWidget.handleFNameEmitted)
         self.controlTabWidget.statusEmitted.connect(self.displayStatus)
         self.configTabWidget.tabIndexEmitted.connect(self.changeTab)
+        self.configTabWidget.manualAddEmitted.connect(self.controlTabWidget.handleManualAdd)
 
     def displayStatus(self, message):
         self.ui.statusbar.showMessage(message, 10000)
