@@ -63,7 +63,8 @@ class ControlTabWidget(QWidget):
         self.ui.scrollArea.setWidget(self.scrollWidget)
 
         # Available serial ports and descriptions
-        self.availablePorts = self.populateSerialPorts()
+        self.availablePorts = None
+        self.populateSerialPorts()
 
         # Signals and Slots:
         self.ui.btnSerialConnect.clicked.connect(self.toggleConnect)
@@ -195,11 +196,12 @@ class ControlTabWidget(QWidget):
             description = '(no description)'
             if port.description:
                 description = port.description()
+            print(name, description)
             line = name + ', ' + description
 
             self.ui.cbSerial.addItem(line)
             outputList.append(name)
-        return outputList
+        self.availablePorts = outputList
 
     def toggleConnect(self):
         '''
@@ -215,18 +217,24 @@ class ControlTabWidget(QWidget):
         if index == 0:
             self.statusEmitted.emit('Please select a port.')
         elif not self.serial.isOpen() or not self.serial:
+            print(self.availablePorts, self.availablePorts[index])
             self.serial.port = self.availablePorts[index]
             self.serial.baudrate = 38400 # Watlow controller default baudrate
             self.serial.timeout = 0.5
-            self.serial.open()
-            if self.controllerWidgetsDict:
-                for address, controllerWidget in self.controllerWidgetsDict.items():
-                    controllerWidget.updateSerial(self.serial)
-            self.ui.btnSerialConnect.setText('Disconnect')
-            self.ui.connectLED.changeState(True)
-            self.statusEmitted.emit('Connected to {0}'.format(self.serial.port))
-            self.toggleTimerRead()
-            self.toggleBlinkLED()
+            try:
+                self.serial.open()
+            except serial.SerialException as e:
+                print(e)
+                self.statusEmitted.emit('Could not open port: ' + self.availablePorts[index])
+            else:
+                if self.controllerWidgetsDict:
+                    for address, controllerWidget in self.controllerWidgetsDict.items():
+                        controllerWidget.updateSerial(self.serial)
+                self.ui.btnSerialConnect.setText('Disconnect')
+                self.ui.connectLED.changeState(True)
+                self.statusEmitted.emit('Connected to {0}'.format(self.serial.port))
+                self.toggleTimerRead()
+                self.toggleBlinkLED()
         else:
             self.toggleTimerRead()
             self.toggleBlinkLED()
