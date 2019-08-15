@@ -18,7 +18,7 @@ class MainWindow(QMainWindow):
         self.ui.tabWidget.insertTab(1, self.configTabWidget, 'Config')
         #self.ui.tabWidget.insertTab(1, self.massSpecWidget, 'Mass Spec Plot')
 
-        self.configTabWidget.fnameEmitted.connect(self.controlTabWidget.handleFNameEmitted)
+        self.configTabWidget.fnameEmitted.connect(self.controlTabWidget.parseConfigFile)
         self.controlTabWidget.statusEmitted.connect(self.displayStatus)
         self.configTabWidget.tabIndexEmitted.connect(self.changeTab)
         self.configTabWidget.manualAddEmitted.connect(self.controlTabWidget.handleManualAdd)

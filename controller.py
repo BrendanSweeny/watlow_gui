@@ -20,6 +20,9 @@ class ControllerWidget(QWidget):
         self.address = int(address)
         self.mode = mode
 
+        self.setpoint = 0
+
+        # Setup scrollArea entry information:
         self.ui.labelName.setText(self.name)
         self.ui.labelAddress.setText(str(self.address))
         self.ui.cbMode.addItems(['Off', 'Heat', 'Cool'])
@@ -28,21 +31,24 @@ class ControllerWidget(QWidget):
         elif mode.lower() == 'heat':
             self.ui.cbMode.setCurrentIndex(1)
 
+        # Initiate instance of Watlow PM3 Controller:
         self.controller = PM3(self.connection, address=self.address)
 
-        self.ui.btnSetTemp.clicked.connect(self.handleSetTemp)
-        self.ui.btnDelete.clicked.connect(self.handleEmitWidget)
+        # Signals/Slots:
+        self.ui.btnSetTemp.clicked.connect(self._handleSetTemp)
+        self.ui.btnDelete.clicked.connect(self._handleEmitWidget)
+        self.ui.leSetTemp.returnPressed.connect(self._handleSetTemp)
 
-    def handleEmitWidget(self):
+    def _handleEmitWidget(self):
         self.widgetEmitted.emit(self)
 
-    def handleSetTemp(self):
+    def _handleSetTemp(self):
         try:
             tempK = int(self.ui.leSetTemp.text())
+            self.write('setpoint', self._k_to_c(tempK))
         except Exception as e:
             print(e)
-        else:
-            self.write('setpoint', self._k_to_c(tempK))
+        self.ui.leSetTemp.clear()
 
     # sizeHint and minimumSizeHint functions from QWidget-derived custom widgets
     # return QSize(-1, -1).
@@ -60,32 +66,39 @@ class ControllerWidget(QWidget):
     def _c_to_k(self, c):
         return c + 273.15
 
-    def read(self, command):
-        commandDict = {'currentTemp': '4001', 'setpoint': '7001'}
-        response = self.controller.write(dataParam=commandDict[command])
-        print(response)
-        try:
-            if command == 'currentTemp':
-                self.ui.lcdCurrentT.display(self._c_to_k(response['data']))
-            elif command == 'setpoint':
-                self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
-        except Exception as e:
-            print(e)
-        if not response['error']:
-            self.ui.connectLED.changeState(True)
-        else:
-            self.ui.connectLED.changeState(False)
+    def _handleResponse(self, command, response):
+        if command == 'currentTemp':
+            self.ui.lcdCurrentT.display(self._c_to_k(response['data']))
+            # Status LED:
+            if abs((self._c_to_k(response['data']) - self.setpoint)) < 20:
+                self.ui.connectLED.changeState(True)
+            else:
+                self.ui.connectLED.changeState(False)
+        elif command == 'setpoint':
+            self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
+            self.setpoint = self._c_to_k(response['data'])
+        return
 
     def updateSerial(self, serialObj):
         self.controller.updateSerial(serialObj)
 
+    def read(self, command):
+        commandDict = {'currentTemp': '4001', 'setpoint': '7001'}
+        try:
+            response = self.controller.write(dataParam=commandDict[command])
+        except Exception as e:
+            print(e)
+        else:
+            print(response)
+            self._handleResponse(command, response)
+
     def write(self, command, value):
-        if command == 'setpoint':
+        try:
             response = self.controller.set(value)
-            try:
-                self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
-            except Exception as e:
-                print(e)
+        except Exception as e:
+            print(e)
+        else:
+            self._handleResponse(command, response)
 
 
 if __name__ == '__main__':

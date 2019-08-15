@@ -46,11 +46,11 @@ class ControlTabWidget(QWidget):
 
         # Timer that reads controller values at specified interval
         self.readTimer = QTimer(self)
-        self.readTimer.timeout.connect(self.handleTimerRead)
+        self.readTimer.timeout.connect(self._handleTimerRead)
 
         # Timer that handles blinking LED
         self.ledTimer = QTimer(self)
-        self.ledTimer.timeout.connect(self.handleBlinkLED)
+        self.ledTimer.timeout.connect(self._handleBlinkLED)
 
         # Threadpool to handle concurrent tasks (periodic controller reads):
         self.threadpool = QThreadPool()
@@ -64,37 +64,27 @@ class ControlTabWidget(QWidget):
 
         # Available serial ports and descriptions
         self.availablePorts = None
-        self.populateSerialPorts()
+        self._populateSerialPorts()
 
         # Signals and Slots:
-        self.ui.btnSerialConnect.clicked.connect(self.toggleConnect)
-        self.ui.btnRefreshPorts.clicked.connect(self.populateSerialPorts)
-        self.ui.btnSetCustomTemp.clicked.connect(self.setCustomTempAll)
+        self.ui.btnSerialConnect.clicked.connect(self._toggleConnect)
+        self.ui.btnRefreshPorts.clicked.connect(self._populateSerialPorts)
+        self.ui.btnSetCustomTemp.clicked.connect(self._setCustomTempAll)
+        self.ui.leSetCustomTemp.returnPressed.connect(self._setCustomTempAll)
 
         # Temperature set buttons:
-        self.ui.btn100K.clicked.connect(lambda: self.handleSetTempAll(100))
-        self.ui.btn200K.clicked.connect(lambda: self.handleSetTempAll(200))
-        self.ui.btn400K.clicked.connect(lambda: self.handleSetTempAll(400))
-        self.ui.btn500K.clicked.connect(lambda: self.handleSetTempAll(500))
-        self.ui.btn600K.clicked.connect(lambda: self.handleSetTempAll(600))
-        self.ui.btn700K.clicked.connect(lambda: self.handleSetTempAll(700))
+        self.ui.btn100K.clicked.connect(lambda: self._handleSetTempAll(100))
+        self.ui.btn200K.clicked.connect(lambda: self._handleSetTempAll(200))
+        self.ui.btn400K.clicked.connect(lambda: self._handleSetTempAll(400))
+        self.ui.btn500K.clicked.connect(lambda: self._handleSetTempAll(500))
+        self.ui.btn600K.clicked.connect(lambda: self._handleSetTempAll(600))
+        self.ui.btn700K.clicked.connect(lambda: self._handleSetTempAll(700))
 
-    def handleManualAdd(self, controllerInfo):
-        print(controllerInfo)
-        name = controllerInfo[0]
-        address = controllerInfo[1]
-        mode = controllerInfo[2]
-        controllerWidget = ControllerWidget(self.serial, name, address, mode)
-        #self.deleteWidget(self.controllerWidgetsDict[address])
-        self.controllerWidgetsDict[address] = controllerWidget
-        self.scrollWidgetLayout.addWidget(controllerWidget)
-        controllerWidget.widgetEmitted.connect(self.deleteWidget)
-
-    def clearLayout(self):
+    def _clearLayout(self):
         for i in reversed(range(self.scrollWidgetLayout.count())):
             self.scrollWidgetLayout.itemAt(i).widget().setParent(None)
 
-    def deleteWidget(self, widget):
+    def _deleteWidget(self, widget):
         '''
         Deletes a single widget from the control_tab (used with controllers'
         'delete' button)
@@ -106,39 +96,24 @@ class ControlTabWidget(QWidget):
         # Delete from dictionary:
         del self.controllerWidgetsDict[widget.address]
 
-    def setCustomTempAll(self):
+    def _setCustomTempAll(self):
         '''
         Handles behavior of the custom temperature line edit
         '''
-        temp = self.ui.leSetCustomTemp.text()
+        tempK = self.ui.leSetCustomTemp.text()
         try:
-            temp = int(tempK)
+            tempK = int(tempK)
         except Exception as e:
             print(e)
             self.statusEmitted.emit('Temperature must be an integer.')
         else:
-            self.handleSetTempAll(tempK)
+            self._handleSetTempAll(tempK)
+            self.ui.leSetCustomTemp.clear()
 
     def _k_to_c(self, k):
         return k - 273.15
 
-    def handleSetTempAll(self, tempK):
-        '''
-        Creates a worker to run the setTempAll fn on a seperate thread.
-        This is probably not as necessary as readTempAll
-        '''
-        tempC = self._k_to_c(tempK)
-        worker = Worker(self.setTempAll, tempC)
-        self.threadpool.start(worker)
-
-    def handleTimerRead(self):
-        '''
-        Creates a worker to run the readTempAll fn on a seperate thread
-        '''
-        worker = Worker(self.readTempAll)
-        self.threadpool.start(worker)
-
-    def setTempAll(self, temp):
+    def _setTempAll(self, temp):
         '''
         Sets temperature of connected watlow controllers based on
         specified heat/cool mode
@@ -149,31 +124,17 @@ class ControlTabWidget(QWidget):
             elif controllerWidget.mode == 'cool' and temp < 25:
                 controllerWidget.write('setpoint', temp)
 
-    def toggleBlinkLED(self):
+    def _handleSetTempAll(self, tempK):
         '''
-        Starts/Stops blinking LED used to indicate that serial is open and
-        periodic read QTimer is running
+        Creates a worker to run the _setTempAll fn on a seperate thread.
+        Running on a seperate thread is probably not as necessary as _readTempAll
+        since it's run once per setpoint change
         '''
-        if not self.ledTimer.isActive():
-            self.ledTimer.start(1000)
-            self.handleBlinkLED()
-        elif self.ledTimer.isActive():
-            self.ledTimer.stop()
+        tempC = self._k_to_c(tempK)
+        worker = Worker(self._setTempAll, tempC)
+        self.threadpool.start(worker)
 
-    def handleBlinkLED(self):
-        if self.ui.monitorLED.state:
-            self.ui.monitorLED.changeState(False)
-        else:
-            self.ui.monitorLED.changeState(True)
-
-    def toggleTimerRead(self):
-        if not self.readTimer.isActive():
-            self.readTimer.start(30000)
-            self.handleTimerRead()
-        elif self.readTimer.isActive():
-            self.readTimer.stop()
-
-    def readTempAll(self):
+    def _readTempAll(self):
         '''
         Reads current temp and setpoint for all controllers
         '''
@@ -182,7 +143,41 @@ class ControlTabWidget(QWidget):
         for address, controllerWidget in self.controllerWidgetsDict.items():
             controllerWidget.read('setpoint')
 
-    def populateSerialPorts(self):
+    def _handleTimerRead(self):
+        '''
+        Creates a worker to run the _readTempAll fn on a seperate thread
+        '''
+        worker = Worker(self._readTempAll)
+        self.threadpool.start(worker)
+
+    def _toggleTimerRead(self):
+        '''
+        Initiates the QTimer for the read queries (_handleTimerRead/_readTempAll)
+        '''
+        if not self.readTimer.isActive():
+            self.readTimer.start(30000)
+            self._handleTimerRead()
+        elif self.readTimer.isActive():
+            self.readTimer.stop()
+
+    def _handleBlinkLED(self):
+        if self.ui.monitorLED.state:
+            self.ui.monitorLED.changeState(False)
+        else:
+            self.ui.monitorLED.changeState(True)
+
+    def _toggleBlinkLED(self):
+        '''
+        Starts/Stops blinking LED used to indicate that serial is open and
+        periodic read QTimer is running
+        '''
+        if not self.ledTimer.isActive():
+            self.ledTimer.start(1000)
+            self._handleBlinkLED()
+        elif self.ledTimer.isActive():
+            self.ledTimer.stop()
+
+    def _populateSerialPorts(self):
         '''
         Finds all connected serial ports and populates the serial combo box
         with the name and description of each
@@ -203,7 +198,7 @@ class ControlTabWidget(QWidget):
             outputList.append(name)
         self.availablePorts = outputList
 
-    def toggleConnect(self):
+    def _toggleConnect(self):
         '''
         Toggles connection to the serial port selected with the serial combo box
         and handles initial program behavior:
@@ -233,11 +228,11 @@ class ControlTabWidget(QWidget):
                 self.ui.btnSerialConnect.setText('Disconnect')
                 self.ui.connectLED.changeState(True)
                 self.statusEmitted.emit('Connected to {0}'.format(self.serial.port))
-                self.toggleTimerRead()
-                self.toggleBlinkLED()
+                self._toggleTimerRead()
+                self._toggleBlinkLED()
         else:
-            self.toggleTimerRead()
-            self.toggleBlinkLED()
+            self._toggleTimerRead()
+            self._toggleBlinkLED()
             self.ui.monitorLED.changeState(False)
             self.serial.flush()
             self.serial.close()
@@ -245,13 +240,10 @@ class ControlTabWidget(QWidget):
             self.ui.connectLED.changeState(False)
             self.statusEmitted.emit('Disconnected from {0}'.format(self.serial.port))
 
-    def handleFNameEmitted(self, fileName):
+    def parseConfigFile(self, fileName):
         '''
         Handler for config file name emitted from config_tab widget
         '''
-        self.parseConfigFile(fileName)
-
-    def parseConfigFile(self, fileName):
         config = configparser.ConfigParser()
         config.read(fileName)
         serialSettings = config['SERIAL']
@@ -280,11 +272,23 @@ class ControlTabWidget(QWidget):
             print(e)
         else:
             self.controllerWidgetsDict = {int(config[controller]['address']): ControllerWidget(self.serial, controller.title(), int(config[controller]['address']), config[controller]['mode']) for controller in controllers}
-            self.clearLayout()
+            self._clearLayout()
             for address, controllerWidget in self.controllerWidgetsDict.items():
                 self.scrollWidgetLayout.addWidget(controllerWidget)
-                controllerWidget.widgetEmitted.connect(self.deleteWidget)
+                controllerWidget.widgetEmitted.connect(self._deleteWidget)
         return
+
+    def handleManualAdd(self, controllerInfo):
+        '''
+        Slot used to add a controller manually from the config tab
+        '''
+        name = controllerInfo[0]
+        address = controllerInfo[1]
+        mode = controllerInfo[2]
+        controllerWidget = ControllerWidget(self.serial, name, address, mode)
+        self.controllerWidgetsDict[address] = controllerWidget
+        self.scrollWidgetLayout.addWidget(controllerWidget)
+        controllerWidget.widgetEmitted.connect(self._deleteWidget)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
