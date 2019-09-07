@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QPushButton
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtCore import QSize
 from controller_ui import Ui_Form
-from watlow import PM3
+from watlow_driver import PM3
 
 class ControllerWidget(QWidget):
 

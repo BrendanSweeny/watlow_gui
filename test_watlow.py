@@ -1,6 +1,6 @@
 import unittest
 
-from watlow import PM3
+from watlow_driver import PM3
 from binascii import unhexlify
 
 class TestWatlow(unittest.TestCase):
@@ -13,12 +13,12 @@ class TestWatlow(unittest.TestCase):
         self.test_pm3_address1 = PM3(connection=None)
         self.test_pm3_address2 = PM3(connection=None, address=2)
 
-    def test_dataChecksum(self):
+    def test_dataCheckByte(self):
         '''
-        Test that the correct checksum value is calculated from the data portion
+        Test that the correct check byte is calculated from the data portion
         of the hex command
 
-        _dataChecksum is the only function scored in this test
+        _dataCheckByte is the only function scored in this test
         '''
         test_data = {
             # Request, Address 1, '4001'
@@ -36,22 +36,22 @@ class TestWatlow(unittest.TestCase):
         }
 
         for hexCommand in test_data:
-            # Assert that the key passed to _dataChecksum results in the
+            # Assert that the key passed to _dataCheckByte results in the
             # corresponding test_data value:
-            self.assertEqual(self.test_pm3_address1._dataChecksum(unhexlify(hexCommand)[8:-2]), test_data[hexCommand], msg='{0}'.format(hexCommand))
-            # Assert that the checksum length is equal to two:
-            self.assertTrue(len(self.test_pm3_address1._dataChecksum(unhexlify(hexCommand)[8:-2])) == 2, msg='{0}'.format(hexCommand))
+            self.assertEqual(self.test_pm3_address1._dataCheckByte(unhexlify(hexCommand)[8:-2]), test_data[hexCommand], msg='{0}'.format(hexCommand))
+            # Assert that the check byte length is equal to two:
+            self.assertTrue(len(self.test_pm3_address1._dataCheckByte(unhexlify(hexCommand)[8:-2])) == 2, msg='{0}'.format(hexCommand))
             # Assert that the result is an instance of type 'bytes'
-            self.assertIsInstance(self.test_pm3_address1._dataChecksum(unhexlify(hexCommand)[8:-2]), bytes, msg='{0}'.format(hexCommand))
+            self.assertIsInstance(self.test_pm3_address1._dataCheckByte(unhexlify(hexCommand)[8:-2]), bytes, msg='{0}'.format(hexCommand))
 
-    def test_headerChecksum(self):
+    def test_headerCheckByte(self):
         '''
-        Tests that the correct checksum value is calculated from the header
+        Tests that the correct check byte is calculated from the header
         portion of the hex command
 
         Watlow zone/address is the only parameter changed in the header by users
 
-        _headerChecksum is the only function scored by this test
+        _headerCheckByte is the only function scored by this test
         '''
         test_data = {
             # Request, Address 1, '4001'
@@ -70,19 +70,19 @@ class TestWatlow(unittest.TestCase):
 
         # Address 1 Tests:
         for hexCommand in test_data:
-            # Assert that the key passed to _headerChecksum results in the
+            # Assert that the key passed to _headerCheckByte results in the
             # corresponding test_data value:
-            self.assertEqual(self.test_pm3_address1._headerChecksum(unhexlify(hexCommand)[0:7]), test_data[hexCommand], msg='{0}'.format(hexCommand))
-            # Assert that the checksum length is equal to one:
-            self.assertTrue(len(self.test_pm3_address1._headerChecksum(unhexlify(hexCommand)[0:7])) == 1, msg='{0}'.format(hexCommand))
-            # Assert that the result is an instance of type 'bytearray'
-            self.assertIsInstance(self.test_pm3_address1._headerChecksum(unhexlify(hexCommand)[0:7]), bytearray, msg='{0}'.format(hexCommand))
+            self.assertEqual(self.test_pm3_address1._headerCheckByte(unhexlify(hexCommand)[0:7]), test_data[hexCommand], msg='{0}'.format(hexCommand))
+            # Assert that the check byte length is equal to one:
+            self.assertTrue(len(self.test_pm3_address1._headerCheckByte(unhexlify(hexCommand)[0:7])) == 1, msg='{0}'.format(hexCommand))
+            # Assert that the result is an instance of type 'bytes'
+            self.assertIsInstance(self.test_pm3_address1._headerCheckByte(unhexlify(hexCommand)[0:7]), bytes, msg='{0}'.format(hexCommand))
 
     def test_buildReadRequest(self):
         '''
         Tests that read requests are built properly based on the input dataParam
 
-        _buildReadRequest is also dependent on _headerChecksum and _dataChecksum
+        _buildReadRequest is also dependent on _headerCheckByte and _dataCheckByte
         '''
         test_data = [
             # Test of form (dataParam, address, request)
@@ -103,7 +103,7 @@ class TestWatlow(unittest.TestCase):
         Tests that set temperature requests are built properly based on the
         input dataParam
 
-        _buildSetRequest is also dependent on _headerChecksum and _dataChecksum
+        _buildSetRequest is also dependent on _headerCheckByte and _dataCheckByte
         '''
         test_data = [
             # Test of form (temperature, address, request)
@@ -176,7 +176,7 @@ class TestWatlow(unittest.TestCase):
 # 55ff051100000661010301040101e399 header should be: b'\x61', data: b'\xe3\x99'
 # 55FF060010000B8802030104010108468F3638DD0E header should be: b'\x88', data: b'\xdd\x0e'
 # 55ff060010000b8802030104010108468f3abe4346 header should be: b'\x88', data: b'\x43\x46'
-# test that the length of the checksum returns are correct (2 for data, 1 for header)
+# test that the length of the check byte returns are correct (2 for data, 1 for header)
 # test for bytearray type on return
 
 # test _validateResponse for '06' in hexCommand

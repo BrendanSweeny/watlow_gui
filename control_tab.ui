@@ -40,6 +40,9 @@
    <property name="text">
     <string>200 K</string>
    </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
   </widget>
   <widget class="QLabel" name="label_11">
    <property name="geometry">
@@ -75,6 +78,9 @@
    </property>
    <property name="text">
     <string>500 K</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label_3">
@@ -212,6 +218,9 @@
    <property name="text">
     <string>100 K</string>
    </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
   </widget>
   <widget class="QPushButton" name="btn400K">
    <property name="geometry">
@@ -229,6 +238,9 @@
    </property>
    <property name="text">
     <string>400 K</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label_13">
@@ -266,6 +278,9 @@
    <property name="text">
     <string>600 K</string>
    </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
   </widget>
   <widget class="QPushButton" name="btn700K">
    <property name="geometry">
@@ -283,6 +298,9 @@
    </property>
    <property name="text">
     <string>700 K</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label_4">

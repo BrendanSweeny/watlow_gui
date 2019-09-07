@@ -1,7 +1,7 @@
 import sys
 import configparser
 import serial
-from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QVBoxLayout, QPushButton
+from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QVBoxLayout, QPushButton, QButtonGroup
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 from PyQt5.QtCore import pyqtSignal, QIODevice, QTimer, QRunnable, QThreadPool, QObject
 from PyQt5.Qt import *
@@ -66,6 +66,17 @@ class ControlTabWidget(QWidget):
         self.availablePorts = None
         self._populateSerialPorts()
 
+        # Button group is used primarily for 'exclusive' checked behavior
+        self.tempButtons = QButtonGroup()
+        self.tempButtons.setExclusive(True)
+
+        self.tempButtons.addButton(self.ui.btn100K)
+        self.tempButtons.addButton(self.ui.btn200K)
+        self.tempButtons.addButton(self.ui.btn400K)
+        self.tempButtons.addButton(self.ui.btn500K)
+        self.tempButtons.addButton(self.ui.btn600K)
+        self.tempButtons.addButton(self.ui.btn700K)
+
         # Signals and Slots:
         self.ui.btnSerialConnect.clicked.connect(self._toggleConnect)
         self.ui.btnRefreshPorts.clicked.connect(self._populateSerialPorts)
@@ -73,12 +84,8 @@ class ControlTabWidget(QWidget):
         self.ui.leSetCustomTemp.returnPressed.connect(self._setCustomTempAll)
 
         # Temperature set buttons:
-        self.ui.btn100K.clicked.connect(lambda: self._handleSetTempAll(100))
-        self.ui.btn200K.clicked.connect(lambda: self._handleSetTempAll(200))
-        self.ui.btn400K.clicked.connect(lambda: self._handleSetTempAll(400))
-        self.ui.btn500K.clicked.connect(lambda: self._handleSetTempAll(500))
-        self.ui.btn600K.clicked.connect(lambda: self._handleSetTempAll(600))
-        self.ui.btn700K.clicked.connect(lambda: self._handleSetTempAll(700))
+        for btn in self.tempButtons.buttons():
+            btn.clicked.connect(lambda: self._handleSetTempAll())
 
     def _clearLayout(self):
         for i in reversed(range(self.scrollWidgetLayout.count())):
@@ -124,13 +131,20 @@ class ControlTabWidget(QWidget):
             elif controllerWidget.mode == 'cool' and temp < 25:
                 controllerWidget.write('setpoint', temp)
 
-    def _handleSetTempAll(self, tempK):
+    def _handleSetTempAll(self, tempK=None):
         '''
         Creates a worker to run the _setTempAll fn on a seperate thread.
         Running on a seperate thread is probably not as necessary as _readTempAll
         since it's run once per setpoint change
+
+        * Attempts to extract temperature from the button text value if not
+          passed as an argument (assumes kelvin)
         '''
-        tempC = self._k_to_c(tempK)
+        if tempK:
+            tempC = self._k_to_c(tempK)
+        else:
+            tempK = int(self.sender().text().split(' ')[0])
+            tempC = self._k_to_c(tempK)
         worker = Worker(self._setTempAll, tempC)
         self.threadpool.start(worker)
 
@@ -140,8 +154,8 @@ class ControlTabWidget(QWidget):
         '''
         for address, controllerWidget in self.controllerWidgetsDict.items():
             controllerWidget.read('currentTemp')
-        for address, controllerWidget in self.controllerWidgetsDict.items():
             controllerWidget.read('setpoint')
+
 
     def _handleTimerRead(self):
         '''

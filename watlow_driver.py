@@ -4,8 +4,6 @@ import struct
 from binascii import unhexlify
 import time
 
-class ControllerError(Exception): pass
-
 class PM3():
     '''
     Object representing a Watlow PM3 PID temperature controller
@@ -15,7 +13,10 @@ class PM3():
         self.timeout = timeout
         self.baudrate = 38400
         self.address = address
-        self.connection = connection
+        if not connection:
+            self.open()
+        else:
+            self.connection = connection
 
     def open(self):
         self.connection = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
@@ -30,10 +31,10 @@ class PM3():
     def _c_to_f(self, c):
         return (c * (9/5)) + 32
 
-    def _headerChecksum(self, hexCommand):
+    def _headerCheckByte(self, headerBytes):
         '''
-        Takes the full header hex command bytes[0] through bytes[6] of the full
-        command and returns a checksum byte array of length one using Watlow's
+        Takes the full header byte array bytes[0] through bytes[6] of the full
+        command and returns a check byte (bytearray of length one) using Watlow's
         algorithm
 
         Implementation relies on this post:
@@ -74,25 +75,27 @@ class PM3():
             0xa9, 0x57, 0x56, 0xa8, 0x54, 0xaa, 0xab, 0x55
         ]
 
-        # Watlow's header checksum algorithm:
-        ans = hex(~crc_8_table[hexCommand[6] ^ crc_8_table[hexCommand[5] ^ crc_8_table[hexCommand[4] ^ crc_8_table[hexCommand[3] ^ crc_8_table[~hexCommand[2]]]]]] & (2**8-1))
-        return bytearray([int(ans, 16)])
+        # Watlow's header check byte algorithm:
+        intCheck = ~crc_8_table[headerBytes[6] ^ crc_8_table[headerBytes[5] ^ \
+                  crc_8_table[headerBytes[4] ^ crc_8_table[headerBytes[3] ^ \
+                  crc_8_table[~headerBytes[2]]]]]] & (2**8-1)
+        return bytes([intCheck])
 
-    def _dataChecksum(self, hexCommand):
+    def _dataCheckByte(self, dataBytes):
         '''
-        Takes the full data hex command, bytes[8] through bytes[13] of the full
-        command and calculates the data checksum using BacNET CRC-16
+        Takes the full data byte array, bytes[8] through bytes[13] of the full
+        command and calculates the data check byte using BacNET CRC-16
         '''
-        # CRC-16 with 0xFFFF as initial value, 0x1021 as polynomial, reversed
+        # CRC-16 with 0xFFFF as initial value, 0x1021 as polynomial, bit reversed
         crc_fun = crcmod.mkCrcFun(poly=0x11021, initCrc=0, rev=True, xorOut=0xFFFF)
         # bytes object packed using C-type unsigned short, little-endian:
-        byte_str = struct.pack('<H', crc_fun(hexCommand))
+        byte_str = struct.pack('<H', crc_fun(dataBytes))
         return byte_str
 
     def _buildReadRequest(self, dataParam):
         '''
         Takes the watlow parameter ID, converts to bytes objects, calls
-        internal functions to calc check sums, and assembles/returns the request
+        internal functions to calc check bytes, and assembles/returns the request
         byte array
         '''
         # Request Header:
@@ -115,9 +118,9 @@ class PM3():
         hexHeader = unhexlify(hexHeader)
         hexData = unhexlify(hexData)
 
-        # Calculate checksums:
-        headerChk = self._headerChecksum(hexHeader)
-        dataChk = self._dataChecksum(hexData)
+        # Calculate check bytes:
+        headerChk = self._headerCheckByte(hexHeader)
+        dataChk = self._dataCheckByte(hexData)
 
         # Assemble request byte array:
         request = bytearray(hexHeader)
@@ -130,7 +133,7 @@ class PM3():
     def _buildSetRequest(self, value):
         '''
         Takes the set point temperature value, converts to bytes objects, calls
-        internal functions to calc check sums, and assembles/returns the request
+        internal functions to calc check bytes, and assembles/returns the request
         byte array
 
         Much of this function is hard coded until I figure out how each
@@ -153,9 +156,9 @@ class PM3():
         hexHeader = unhexlify(hexHeader)
         hexData = unhexlify(hexData) + value
 
-        # Calculate checksums:
-        headerChk = self._headerChecksum(hexHeader)
-        dataChk = self._dataChecksum(hexData)
+        # Calculate check bytes:
+        headerChk = self._headerCheckByte(hexHeader)
+        dataChk = self._dataCheckByte(hexData)
 
         # Assemble request byte array:
         request = bytearray(hexHeader)
@@ -167,7 +170,7 @@ class PM3():
 
     def _validateResponse(self, bytesResponse):
         '''
-        Compares checksum characters received in response to those calculated
+        Compares check bytes received in response to those calculated
 
         TODO: make sure this checks that the address in response is correct
         '''
@@ -177,8 +180,8 @@ class PM3():
         headerChkReceived = bytearray([bytesResponse[7]])
         dataCheckRecieved = bytesResponse[-2:]
         #addressReceived = int(bytesResponse.hex()[8:10]) - 9
-        if (headerChkReceived == self._headerChecksum(bytesResponse[0:7]) and \
-            dataCheckRecieved == self._dataChecksum(bytesResponse[8:-2])):
+        if (headerChkReceived == self._headerCheckByte(bytesResponse[0:7]) and \
+            dataCheckRecieved == self._dataCheckByte(bytesResponse[8:-2])):
             isValid = True
         return isValid
 
@@ -257,11 +260,3 @@ class PM3():
 
     def updateSerial(self, serialObj):
         self.connection = serialObj
-
-'''
-pm3 = PM3('COM3', address=2)
-pm3.open()
-#print(pm3.set(value=125))
-print(pm3.write(dataParam='4001'))
-pm3.close()
-'''
