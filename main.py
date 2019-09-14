@@ -1,4 +1,5 @@
 import sys
+import images_qrc
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtGui import QIcon
 from main_ui import Ui_MainWindow
@@ -14,7 +15,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle('Watlow EZ-Zone PM3 Temperature Control')
         # Icon from: https://icons8.com/icons/set/temperature
-        self.setWindowIcon(QIcon('icon.png'))
+        self.setWindowIcon(QIcon(':icon.ico'))
 
         # Tab and Widget Setup
         self.controlTabWidget = ControlTabWidget()

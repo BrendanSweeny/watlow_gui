@@ -1,7 +1,7 @@
 import serial
 import crcmod
 import struct
-from binascii import unhexlify
+from binascii import unhexlify, hexlify
 import time
 
 class PM3():
@@ -110,7 +110,7 @@ class PM3():
         # Reformats data param from notation in the manual to hex
         # (e.g. '4001' to '04' and '001' to '0401')
         dataParam = format(int(dataParam), '05d')
-        dataParam = (int(dataParam[:2]).to_bytes(1, 'big') + int(dataParam[2:]).to_bytes(1, 'big')).hex()
+        dataParam = hexlify(int(dataParam[:2]).to_bytes(1, 'big') + int(dataParam[2:]).to_bytes(1, 'big')).decode('utf-8')
         instance = '01'
         hexData = additionalData + dataParam + instance
 
@@ -205,8 +205,8 @@ class PM3():
                      }
         else:
 
-            ieee_754 = bytesResponse[-6:-2].hex()
-            print('response: ', bytesResponse.hex())
+            ieee_754 = hexlify(bytesResponse[-6:-2])
+            print('response: ', hexlify(bytesResponse))
             print('ieee_754: ', ieee_754)
             data = struct.unpack('>f', unhexlify(ieee_754))[0]
             output = {
@@ -250,7 +250,7 @@ class PM3():
         '''
         value = self._c_to_f(value)
         request = self._buildSetRequest(value)
-        print('request: ', request.hex(), request)
+        print('request: ', hexlify(request), request)
 
         self.connection.write(request)
         bytesResponse = self.connection.read(21)
