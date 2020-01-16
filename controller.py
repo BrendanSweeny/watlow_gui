@@ -40,6 +40,7 @@ class ControllerWidget(QWidget):
         self.ui.btnSetTemp.clicked.connect(self._handleSetTemp)
         self.ui.btnDelete.clicked.connect(self._handleEmitWidget)
         self.ui.leSetTemp.returnPressed.connect(self._handleSetTemp)
+        self.ui.cbMode.currentTextChanged.connect(self._handleChangeMode)
 
     def _handleEmitWidget(self):
         self.widgetEmitted.emit(self)
@@ -47,13 +48,16 @@ class ControllerWidget(QWidget):
     def _handleSetTemp(self):
         try:
             tempK = int(self.ui.leSetTemp.text())
-            if tempK > self.maxTemp:
+            if self.maxTemp and tempK > self.maxTemp:
                 self.statusEmitted.emit('Setpoint exceeds max temperature!')
             else:
                 self.write('setpoint', self._k_to_c(tempK))
         except Exception as e:
             print(e)
         self.ui.leSetTemp.clear()
+
+    def _handleChangeMode(self, value):
+        self.mode = value.lower()
 
     # sizeHint and minimumSizeHint functions from QWidget-derived custom widgets
     # return QSize(-1, -1).

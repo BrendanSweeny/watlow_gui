@@ -117,7 +117,7 @@ class ControlTabWidget(QWidget):
             print(e)
             self.statusEmitted.emit('Temperature must be an integer.')
         else:
-            if tempK > self.maxTemp:
+            if self.maxTemp and tempK > self.maxTemp:
                 self.statusEmitted.emit('Setpoint exceeds max temperature!')
             else:
                 self._handleSetTempAll(tempK)
@@ -149,7 +149,7 @@ class ControlTabWidget(QWidget):
         if not tempK:
             tempK = int(self.sender().text().split(' ')[0])
 
-        if tempK > self.maxTemp:
+        if self.maxTemp and tempK > self.maxTemp:
             self.statusEmitted.emit('Setpoint exceeds max temperature!')
         else:
             tempC = self._k_to_c(tempK)
@@ -275,7 +275,7 @@ class ControlTabWidget(QWidget):
         config.read(fileName)
         serialSettings = config['SERIAL']
 
-        if config['GENERAL']['maxtemp']:
+        if 'maxtemp' in config['GENERAL'].keys():
             self.maxTemp = float(config['GENERAL']['maxtemp'])
 
         # Extract Serial Info:
