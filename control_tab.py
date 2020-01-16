@@ -41,6 +41,9 @@ class ControlTabWidget(QWidget):
 
         self.controllerWidgets = None
 
+        # Maximum setpoint temperature:
+        self.maxTemp = None
+
         # Dictionary that contains controllerWidgets by address/object key/val pairs
         self.controllerWidgetsDict = {}
 
@@ -107,14 +110,17 @@ class ControlTabWidget(QWidget):
         '''
         Handles behavior of the custom temperature line edit
         '''
-        tempK = self.ui.leSetCustomTemp.text()
         try:
+            tempK = self.ui.leSetCustomTemp.text()
             tempK = int(tempK)
         except Exception as e:
             print(e)
             self.statusEmitted.emit('Temperature must be an integer.')
         else:
-            self._handleSetTempAll(tempK)
+            if tempK > self.maxTemp:
+                self.statusEmitted.emit('Setpoint exceeds max temperature!')
+            else:
+                self._handleSetTempAll(tempK)
             self.ui.leSetCustomTemp.clear()
 
     def _k_to_c(self, k):
@@ -140,13 +146,16 @@ class ControlTabWidget(QWidget):
         * Attempts to extract temperature from the button text value if not
           passed as an argument (assumes kelvin)
         '''
-        if tempK:
-            tempC = self._k_to_c(tempK)
-        else:
+        if not tempK:
             tempK = int(self.sender().text().split(' ')[0])
+
+        if tempK > self.maxTemp:
+            self.statusEmitted.emit('Setpoint exceeds max temperature!')
+        else:
             tempC = self._k_to_c(tempK)
-        worker = Worker(self._setTempAll, tempC)
-        self.threadpool.start(worker)
+
+            worker = Worker(self._setTempAll, tempC)
+            self.threadpool.start(worker)
 
     def _readTempAll(self):
         '''
@@ -254,6 +263,10 @@ class ControlTabWidget(QWidget):
             self.ui.connectLED.changeState(False)
             self.statusEmitted.emit('Disconnected from {0}'.format(self.serial.port))
 
+    def _passStatus(self, statusStr):
+        '''Emits string to main.py to be shown in the status bar'''
+        self.statusEmitted.emit(statusStr)
+
     def parseConfigFile(self, fileName):
         '''
         Handler for config file name emitted from config_tab widget
@@ -261,6 +274,9 @@ class ControlTabWidget(QWidget):
         config = configparser.ConfigParser()
         config.read(fileName)
         serialSettings = config['SERIAL']
+
+        if config['GENERAL']['maxtemp']:
+            self.maxTemp = float(config['GENERAL']['maxtemp'])
 
         # Extract Serial Info:
         try:
@@ -279,17 +295,19 @@ class ControlTabWidget(QWidget):
 
         # Deal with Controller Info:
         try:
-            controllers = [controller for controller in config.sections() if controller != 'SERIAL']
+            reservedNames = ['SERIAL', 'GENERAL']
+            controllers = [controller for controller in config.sections() if controller not in reservedNames]
             if controllers == []:
                 raise Exception('No controllers found in config file.')
         except Exception as e:
             print(e)
         else:
-            self.controllerWidgetsDict = {int(config[controller]['address']): ControllerWidget(self.serial, controller.title(), int(config[controller]['address']), config[controller]['mode']) for controller in controllers}
+            self.controllerWidgetsDict = {int(config[controller]['address']): ControllerWidget(self.serial, controller.title(), int(config[controller]['address']), config[controller]['mode'], self.maxTemp) for controller in controllers}
             self._clearLayout()
             for address, controllerWidget in self.controllerWidgetsDict.items():
                 self.scrollWidgetLayout.addWidget(controllerWidget)
                 controllerWidget.widgetEmitted.connect(self._deleteWidget)
+                controllerWidget.statusEmitted.connect(self._passStatus)
         return
 
     def handleManualAdd(self, controllerInfo):

@@ -8,8 +8,9 @@ from watlow_driver import PM3
 class ControllerWidget(QWidget):
 
     widgetEmitted = pyqtSignal(object)
+    statusEmitted = pyqtSignal(str)
 
-    def __init__(self, connection, name='No Name', address=None, mode=None):
+    def __init__(self, connection, name='No Name', address=None, mode=None, maxTemp=None):
         super().__init__()
 
         self.ui = Ui_Form()
@@ -19,6 +20,7 @@ class ControllerWidget(QWidget):
         self.name = name
         self.address = int(address)
         self.mode = mode
+        self.maxTemp = maxTemp
 
         self.setpoint = 0
 
@@ -45,7 +47,10 @@ class ControllerWidget(QWidget):
     def _handleSetTemp(self):
         try:
             tempK = int(self.ui.leSetTemp.text())
-            self.write('setpoint', self._k_to_c(tempK))
+            if tempK > self.maxTemp:
+                self.statusEmitted.emit('Setpoint exceeds max temperature!')
+            else:
+                self.write('setpoint', self._k_to_c(tempK))
         except Exception as e:
             print(e)
         self.ui.leSetTemp.clear()
