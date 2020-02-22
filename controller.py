@@ -76,6 +76,9 @@ class ControllerWidget(QWidget):
         return c + 273.15
 
     def _handleResponse(self, command, response):
+        if response['error']:
+            print(response['error'])
+            return
         if command == 'currentTemp':
             self.ui.lcdCurrentT.display(self._c_to_k(response['data']))
             # Status LED:
@@ -98,7 +101,7 @@ class ControllerWidget(QWidget):
         except Exception as e:
             print(e)
         else:
-            print(response)
+            #print(response)
             self._handleResponse(command, response)
 
     def write(self, command, value):

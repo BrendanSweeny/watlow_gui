@@ -1,6 +1,7 @@
 import sys
 import configparser
 import serial
+import serial.rs485
 from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QVBoxLayout, QPushButton, QButtonGroup
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 from PyQt5.QtCore import pyqtSignal, QIODevice, QTimer, QRunnable, QThreadPool, QObject
@@ -38,6 +39,7 @@ class ControlTabWidget(QWidget):
         self.ui.setupUi(self)
 
         self.serial = serial.Serial()
+        self.serial.rs485_mode = serial.rs485.RS485Settings()
 
         self.controllerWidgets = None
 
@@ -178,7 +180,7 @@ class ControlTabWidget(QWidget):
         Initiates the QTimer for the read queries (_handleTimerRead/_readTempAll)
         '''
         if not self.readTimer.isActive():
-            self.readTimer.start(30000)
+            self.readTimer.start(2000)
             self._handleTimerRead()
         elif self.readTimer.isActive():
             self.readTimer.stop()
@@ -286,7 +288,6 @@ class ControlTabWidget(QWidget):
 
             for i, availablePort in enumerate(self.availablePorts):
                 if self.port in availablePort:
-                    #print(availablePort, i)
                     self.ui.cbSerial.setCurrentIndex(i)
         except Exception as e:
             print(e)

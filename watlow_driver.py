@@ -190,14 +190,15 @@ class PM3():
         Takes the full response byte array and extracts the relevant data (e.g.
         current temperature), constructs response dict, and returns it
         '''
-
+        print(bytesResponse, len(bytesResponse))
         try:
-            if bytesResponse == b'':
+            if bytesResponse == b'' or bytesResponse == bytearray(len(bytesResponse)):
                 raise Exception('Exception: No response at address {0}'.format(self.address))
             if not self._validateResponse(bytesResponse):
+                print('Invalid Response at address {0}: '.format(self.address), hexlify(bytesResponse))
                 raise Exception('Exception: Invalid response received from address {0}'.format(self.address))
         except Exception as e:
-            print(e)
+            #print(e)
             output = {
                         'address': self.address,
                         'data': None,
@@ -206,8 +207,8 @@ class PM3():
         else:
 
             ieee_754 = hexlify(bytesResponse[-6:-2])
-            print('response: ', hexlify(bytesResponse))
-            print('ieee_754: ', ieee_754)
+            #print('response: ', hexlify(bytesResponse))
+            #print('ieee_754: ', ieee_754)
             data = struct.unpack('>f', unhexlify(ieee_754))[0]
             output = {
                         'address': self.address,
@@ -229,6 +230,7 @@ class PM3():
         Returns a dict containing the response data and address
         '''
         request = self._buildReadRequest(dataParam)
+        print('read request add. ' + str(self.address) + ': ', hexlify(request), len(request))
         #print(request.hex())
         try:
             self.connection.write(request)
@@ -236,8 +238,9 @@ class PM3():
             print('Exception: ', e)
         else:
             response = self.connection.read(21)
+            #response = self.connection.read(self.connection.inWaiting())
             #response = self.connection.readline()
-            print('full response: ', response)
+            print('read response add ' + str(self.address) + ': ', hexlify(response), len(response))
             output = self._parseResponse(response)
             return output
 
@@ -250,13 +253,20 @@ class PM3():
         '''
         value = self._c_to_f(value)
         request = self._buildSetRequest(value)
-        print('request: ', hexlify(request), request)
+        print('set request add. ' + str(self.address) + ': ', hexlify(request), len(request))
 
-        self.connection.write(request)
-        bytesResponse = self.connection.read(21)
-        output = self._parseResponse(bytesResponse)
-        print('output: ', output)
-        return output
+        try:
+            self.connection.write(request)
+        except Exception as e:
+            print('Exception: ', e)
+        else:
+            bytesResponse = self.connection.read(20)
+            #bytesResponse = self.connection.read(self.connection.inWaiting())
+            #bytesResponse = self.connection.readline()
+            print('set response add ' + str(self.address) + ': ', hexlify(bytesResponse), len(bytesResponse))
+            output = self._parseResponse(bytesResponse)
+            print('output: ', output)
+            return output
 
     def updateSerial(self, serialObj):
         self.connection = serialObj
