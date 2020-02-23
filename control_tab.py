@@ -59,6 +59,7 @@ class ControlTabWidget(QWidget):
 
         # Threadpool to handle concurrent tasks (periodic controller reads):
         self.threadpool = QThreadPool()
+        self.threadpool.setMaxThreadCount(1)
 
         # Sets up the scroll widget to have vertical box layout for controllers:
         self.scrollWidget = QWidget()
@@ -133,6 +134,7 @@ class ControlTabWidget(QWidget):
         Sets temperature of connected watlow controllers based on
         specified heat/cool mode
         '''
+        print('active threads: ', self.threadpool.activeThreadCount())
         for address, controllerWidget in self.controllerWidgetsDict.items():
             if controllerWidget.mode == 'heat' and temp > 25:
                 controllerWidget.write('setpoint', temp)
@@ -163,6 +165,7 @@ class ControlTabWidget(QWidget):
         '''
         Reads current temp and setpoint for all controllers
         '''
+        print('active threads: ', self.threadpool.activeThreadCount())
         for address, controllerWidget in self.controllerWidgetsDict.items():
             controllerWidget.read('currentTemp')
             controllerWidget.read('setpoint')
@@ -180,7 +183,7 @@ class ControlTabWidget(QWidget):
         Initiates the QTimer for the read queries (_handleTimerRead/_readTempAll)
         '''
         if not self.readTimer.isActive():
-            self.readTimer.start(2000)
+            self.readTimer.start(3000)
             self._handleTimerRead()
         elif self.readTimer.isActive():
             self.readTimer.stop()
@@ -309,7 +312,13 @@ class ControlTabWidget(QWidget):
                 self.scrollWidgetLayout.addWidget(controllerWidget)
                 controllerWidget.widgetEmitted.connect(self._deleteWidget)
                 controllerWidget.statusEmitted.connect(self._passStatus)
+                controllerWidget.setPointEmitted.connect(self._handleSetPoint)
         return
+
+    def _handleSetPoint(self, emittedFunc):
+        print(self.threadpool.activeThreadCount())
+        worker = Worker(emittedFunc)
+        self.threadpool.start(worker)
 
     def handleManualAdd(self, controllerInfo):
         '''

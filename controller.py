@@ -9,6 +9,7 @@ class ControllerWidget(QWidget):
 
     widgetEmitted = pyqtSignal(object)
     statusEmitted = pyqtSignal(str)
+    setPointEmitted = pyqtSignal(object)
 
     def __init__(self, connection, name='No Name', address=None, mode=None, maxTemp=None):
         super().__init__()
@@ -37,13 +38,18 @@ class ControllerWidget(QWidget):
         self.controller = PM3(self.connection, address=self.address)
 
         # Signals/Slots:
-        self.ui.btnSetTemp.clicked.connect(self._handleSetTemp)
+        #self.ui.btnSetTemp.clicked.connect(self._handleSetTemp)
+        self.ui.btnSetTemp.clicked.connect(self._emitSetTemp)
         self.ui.btnDelete.clicked.connect(self._handleEmitWidget)
-        self.ui.leSetTemp.returnPressed.connect(self._handleSetTemp)
+        #self.ui.leSetTemp.returnPressed.connect(self._handleSetTemp)
+        self.ui.leSetTemp.returnPressed.connect(self._emitSetTemp)
         self.ui.cbMode.currentTextChanged.connect(self._handleChangeMode)
 
     def _handleEmitWidget(self):
         self.widgetEmitted.emit(self)
+
+    def _emitSetTemp(self):
+        self.setPointEmitted.emit(self._handleSetTemp)
 
     def _handleSetTemp(self):
         try:
@@ -53,8 +59,8 @@ class ControllerWidget(QWidget):
             else:
                 self.write('setpoint', self._k_to_c(tempK))
         except Exception as e:
-            print(e)
-        self.ui.leSetTemp.clear()
+            print('_handleSetTemp: ', e)
+        #self.ui.leSetTemp.clear()
 
     def _handleChangeMode(self, value):
         self.mode = value.lower()
