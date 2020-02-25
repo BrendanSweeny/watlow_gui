@@ -101,8 +101,12 @@ class ControllerWidget(QWidget):
             else:
                 self.ui.connectLED.changeState(False)
         elif command == 'setpoint':
-            self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
-            self.setpoint = self._c_to_k(response['data'])
+            print('command was setpoint')
+            try:
+                self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
+                self.setpoint = self._c_to_k(response['data'])
+            except Exception as e:
+                print(e)
         return
 
     def updateSerial(self, serialObj):
@@ -124,6 +128,7 @@ class ControllerWidget(QWidget):
         except Exception as e:
             print(e)
         else:
+            print('write response: ', response)
             self._handleResponse(command, response)
 
 

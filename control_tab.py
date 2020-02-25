@@ -1,31 +1,15 @@
 import sys
 import configparser
 import serial
-import serial.rs485
+#import serial.rs485
 from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QVBoxLayout, QPushButton, QButtonGroup
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
-from PyQt5.QtCore import pyqtSignal, QIODevice, QTimer, QRunnable, QThreadPool, QObject
+from PyQt5.QtCore import pyqtSignal, QTimer, QThreadPool, QObject
 from PyQt5.Qt import *
 from control_tab_ui import Ui_Form
 from controller import ControllerWidget
 from led import LEDWidget
-
-class Worker(QRunnable):
-    '''
-    Runnable "worker" used to execute functions on a seperate thread than
-    the PyQt event loop
-    '''
-    def __init__(self, func, *args, **kwargs):
-        super().__init__()
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-    def run(self):
-        try:
-            self.func(*self.args, **self.kwargs)
-        except Exception as e:
-            print(e)
+from worker import Worker
 
 class ControlTabWidget(QWidget):
 
@@ -39,7 +23,7 @@ class ControlTabWidget(QWidget):
         self.ui.setupUi(self)
 
         self.serial = serial.Serial()
-        self.serial.rs485_mode = serial.rs485.RS485Settings()
+        #self.serial.rs485_mode = serial.rs485.RS485Settings()
 
         self.controllerWidgets = None
 
@@ -107,7 +91,6 @@ class ControlTabWidget(QWidget):
         opposed to deleteLater() where the layout may still contain the widget
         '''
         widget.setParent(None)
-        # Delete from dictionary:
         del self.controllerWidgetsDict[widget.address]
 
     def _setCustomTempAll(self):
@@ -157,9 +140,6 @@ class ControlTabWidget(QWidget):
             self.statusEmitted.emit('Setpoint exceeds max temperature!')
         else:
             tempC = self._k_to_c(tempK)
-
-            #worker = Worker(self._setTempAll, tempC)
-            #self.threadpool.start(worker)
             self._runInThreadpool(self._setTempAll, tempC)
 
     def _readTempAll(self):
@@ -305,12 +285,12 @@ class ControlTabWidget(QWidget):
                 controllerWidget.widgetEmitted.connect(self._deleteWidget)
                 controllerWidget.statusEmitted.connect(self._passStatus)
                 controllerWidget.setPointEmitted.connect(self._runInThreadpool)
-        return
 
     def _runInThreadpool(self, func, *args, **kwargs):
         '''
         Creates QRunnable and passes to threadpool. Used with:
         * Periodic temp/setpoint reads
+        * Changing setpoints from the control tab
         * Individual set requests emitted from controller instances
         '''
         self.threadpool.start(Worker(func, *args, **kwargs))
