@@ -54,20 +54,24 @@ class ControllerWidget(QWidget):
         '''
         Set temp function is emitted so that it will be added to the request threadpool
         in the control tab rather than being called from the controller in the
-        main event loop. Avoids reading responses out of order
-        '''
-        self.setPointEmitted.emit(self._handleSetTemp)
+        main event loop. Avoids reading responses out of order.
 
-    def _handleSetTemp(self):
+        * QLineEdit changes are made before emitting function because .clear()
+          would often crash program without rasing an error when executed after
+          being emitted (or possibly when executed in the threadpool)
+        '''
+        tempK = int(self.ui.leSetTemp.text())
+        self.ui.leSetTemp.clear()
+        self.setPointEmitted.emit(lambda: self._handleSetTemp(tempK))
+
+    def _handleSetTemp(self, tempK):
         try:
-            tempK = int(self.ui.leSetTemp.text())
             if self.maxTemp and tempK > self.maxTemp:
                 self.statusEmitted.emit('Setpoint exceeds max temperature!')
             else:
                 self.write('setpoint', self._k_to_c(tempK))
         except Exception as e:
             print('_handleSetTemp: ', e)
-        self.ui.leSetTemp.clear()
 
     def _handleChangeMode(self, value):
         self.mode = value.lower()
@@ -101,7 +105,6 @@ class ControllerWidget(QWidget):
             else:
                 self.ui.connectLED.changeState(False)
         elif command == 'setpoint':
-            print('command was setpoint')
             try:
                 self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
                 self.setpoint = self._c_to_k(response['data'])
