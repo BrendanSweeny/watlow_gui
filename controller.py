@@ -11,7 +11,7 @@ class ControllerWidget(QWidget):
     statusEmitted = pyqtSignal(str)
     setPointEmitted = pyqtSignal(object)
 
-    def __init__(self, connection, name='No Name', address=None, mode=None, maxTemp=None):
+    def __init__(self, connection, name='No Name', address=1, mode=None, maxTemp=None):
         super().__init__()
 
         self.ui = Ui_Form()
@@ -38,17 +38,24 @@ class ControllerWidget(QWidget):
         self.controller = PM3(self.connection, address=self.address)
 
         # Signals/Slots:
-        #self.ui.btnSetTemp.clicked.connect(self._handleSetTemp)
         self.ui.btnSetTemp.clicked.connect(self._emitSetTemp)
         self.ui.btnDelete.clicked.connect(self._handleEmitWidget)
-        #self.ui.leSetTemp.returnPressed.connect(self._handleSetTemp)
         self.ui.leSetTemp.returnPressed.connect(self._emitSetTemp)
         self.ui.cbMode.currentTextChanged.connect(self._handleChangeMode)
 
     def _handleEmitWidget(self):
+        '''
+        Emits the specific instance of the controller class in order to delete
+        it from the control tab
+        '''
         self.widgetEmitted.emit(self)
 
     def _emitSetTemp(self):
+        '''
+        Set temp function is emitted so that it will be added to the request threadpool
+        in the control tab rather than being called from the controller in the
+        main event loop. Avoids reading responses out of order
+        '''
         self.setPointEmitted.emit(self._handleSetTemp)
 
     def _handleSetTemp(self):
@@ -60,16 +67,17 @@ class ControllerWidget(QWidget):
                 self.write('setpoint', self._k_to_c(tempK))
         except Exception as e:
             print('_handleSetTemp: ', e)
-        #self.ui.leSetTemp.clear()
+        self.ui.leSetTemp.clear()
 
     def _handleChangeMode(self, value):
         self.mode = value.lower()
 
-    # sizeHint and minimumSizeHint functions from QWidget-derived custom widgets
-    # return QSize(-1, -1).
-    # Meaning it will shrink to zero when added to a layout as in control_tab.py
-    # These sizes are from the controller_ui.ui file
     def sizeHint(self):
+        '''
+        sizeHint and minimumSizeHint functions from QWidget-derived custom widgets
+        return QSize(-1, -1). Meaning it will shrink to zero when added to a
+        layout as in control_tab.py. These sizes are from the controller_ui.ui file
+        '''
         return QSize(489, 84)
 
     def minimumSizeHint(self):

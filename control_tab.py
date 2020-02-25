@@ -49,17 +49,21 @@ class ControlTabWidget(QWidget):
         # Dictionary that contains controllerWidgets by address/object key/val pairs
         self.controllerWidgetsDict = {}
 
-        # Timer that reads controller values at specified interval
-        self.readTimer = QTimer(self)
-        self.readTimer.timeout.connect(self._handleTimerRead)
-
         # Timer that handles blinking LED
         self.ledTimer = QTimer(self)
         self.ledTimer.timeout.connect(self._handleBlinkLED)
 
         # Threadpool to handle concurrent tasks (periodic controller reads):
+        # * The threadpool handles all Watlow read/set requests to prevent blocking.
+        # * The threadpool is limited to one thread so that requests and reads remain
+        #   sequential even when a set request is triggered during a periodic read.
+        #   Otherwise it is possible to read responses out of order.
         self.threadpool = QThreadPool()
         self.threadpool.setMaxThreadCount(1)
+
+        # Timer that reads controller values at specified interval
+        self.readTimer = QTimer(self)
+        self.readTimer.timeout.connect(lambda: self._runInThreadpool(self._readTempAll))
 
         # Sets up the scroll widget to have vertical box layout for controllers:
         self.scrollWidget = QWidget()
@@ -75,7 +79,6 @@ class ControlTabWidget(QWidget):
         # Button group is used primarily for 'exclusive' checked behavior
         self.tempButtons = QButtonGroup()
         self.tempButtons.setExclusive(True)
-
         self.tempButtons.addButton(self.ui.btn100K)
         self.tempButtons.addButton(self.ui.btn200K)
         self.tempButtons.addButton(self.ui.btn400K)
@@ -100,11 +103,9 @@ class ControlTabWidget(QWidget):
     def _deleteWidget(self, widget):
         '''
         Deletes a single widget from the control_tab (used with controllers'
-        'delete' button)
+        'delete' button). A widget is deleted when its parent is removed as
+        opposed to deleteLater() where the layout may still contain the widget
         '''
-        # Delete from layout:
-        # It appears that a widget is deleted when its parent is removed
-        # As opposed to deleteLater() where the layout may still contain items
         widget.setParent(None)
         # Delete from dictionary:
         del self.controllerWidgetsDict[widget.address]
@@ -134,7 +135,6 @@ class ControlTabWidget(QWidget):
         Sets temperature of connected watlow controllers based on
         specified heat/cool mode
         '''
-        print('active threads: ', self.threadpool.activeThreadCount())
         for address, controllerWidget in self.controllerWidgetsDict.items():
             if controllerWidget.mode == 'heat' and temp > 25:
                 controllerWidget.write('setpoint', temp)
@@ -158,33 +158,25 @@ class ControlTabWidget(QWidget):
         else:
             tempC = self._k_to_c(tempK)
 
-            worker = Worker(self._setTempAll, tempC)
-            self.threadpool.start(worker)
+            #worker = Worker(self._setTempAll, tempC)
+            #self.threadpool.start(worker)
+            self._runInThreadpool(self._setTempAll, tempC)
 
     def _readTempAll(self):
         '''
         Reads current temp and setpoint for all controllers
         '''
-        print('active threads: ', self.threadpool.activeThreadCount())
         for address, controllerWidget in self.controllerWidgetsDict.items():
             controllerWidget.read('currentTemp')
             controllerWidget.read('setpoint')
 
-
-    def _handleTimerRead(self):
-        '''
-        Creates a worker to run the _readTempAll fn on a seperate thread
-        '''
-        worker = Worker(self._readTempAll)
-        self.threadpool.start(worker)
-
     def _toggleTimerRead(self):
         '''
-        Initiates the QTimer for the read queries (_handleTimerRead/_readTempAll)
+        Initiates the QTimer for the read queries (_readTempAll)
         '''
         if not self.readTimer.isActive():
             self.readTimer.start(3000)
-            self._handleTimerRead()
+            self._runInThreadpool(self._readTempAll)
         elif self.readTimer.isActive():
             self.readTimer.stop()
 
@@ -312,13 +304,16 @@ class ControlTabWidget(QWidget):
                 self.scrollWidgetLayout.addWidget(controllerWidget)
                 controllerWidget.widgetEmitted.connect(self._deleteWidget)
                 controllerWidget.statusEmitted.connect(self._passStatus)
-                controllerWidget.setPointEmitted.connect(self._handleSetPoint)
+                controllerWidget.setPointEmitted.connect(self._runInThreadpool)
         return
 
-    def _handleSetPoint(self, emittedFunc):
-        print(self.threadpool.activeThreadCount())
-        worker = Worker(emittedFunc)
-        self.threadpool.start(worker)
+    def _runInThreadpool(self, func, *args, **kwargs):
+        '''
+        Creates QRunnable and passes to threadpool. Used with:
+        * Periodic temp/setpoint reads
+        * Individual set requests emitted from controller instances
+        '''
+        self.threadpool.start(Worker(func, *args, **kwargs))
 
     def handleManualAdd(self, controllerInfo):
         '''
