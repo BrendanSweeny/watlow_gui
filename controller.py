@@ -9,8 +9,9 @@ class ControllerWidget(QWidget):
 
     widgetEmitted = pyqtSignal(object)
     statusEmitted = pyqtSignal(str)
+    setPointEmitted = pyqtSignal(object)
 
-    def __init__(self, connection, name='No Name', address=None, mode=None, maxTemp=None):
+    def __init__(self, connection, name='No Name', address=1, mode=None, maxTemp=None):
         super().__init__()
 
         self.ui = Ui_Form()
@@ -37,33 +38,50 @@ class ControllerWidget(QWidget):
         self.controller = PM3(self.connection, address=self.address)
 
         # Signals/Slots:
-        self.ui.btnSetTemp.clicked.connect(self._handleSetTemp)
+        self.ui.btnSetTemp.clicked.connect(self._emitSetTemp)
         self.ui.btnDelete.clicked.connect(self._handleEmitWidget)
-        self.ui.leSetTemp.returnPressed.connect(self._handleSetTemp)
+        self.ui.leSetTemp.returnPressed.connect(self._emitSetTemp)
         self.ui.cbMode.currentTextChanged.connect(self._handleChangeMode)
 
     def _handleEmitWidget(self):
+        '''
+        Emits the specific instance of the controller class in order to delete
+        it from the control tab
+        '''
         self.widgetEmitted.emit(self)
 
-    def _handleSetTemp(self):
+    def _emitSetTemp(self):
+        '''
+        Set temp function is emitted so that it will be added to the request threadpool
+        in the control tab rather than being called from the controller in the
+        main event loop. Avoids reading responses out of order.
+
+        * QLineEdit changes are made before emitting function because .clear()
+          would often crash program without rasing an error when executed after
+          being emitted (or possibly when executed in the threadpool)
+        '''
+        tempK = int(self.ui.leSetTemp.text())
+        self.ui.leSetTemp.clear()
+        self.setPointEmitted.emit(lambda: self._handleSetTemp(tempK))
+
+    def _handleSetTemp(self, tempK):
         try:
-            tempK = int(self.ui.leSetTemp.text())
             if self.maxTemp and tempK > self.maxTemp:
                 self.statusEmitted.emit('Setpoint exceeds max temperature!')
             else:
                 self.write('setpoint', self._k_to_c(tempK))
         except Exception as e:
-            print(e)
-        self.ui.leSetTemp.clear()
+            print('_handleSetTemp: ', e)
 
     def _handleChangeMode(self, value):
         self.mode = value.lower()
 
-    # sizeHint and minimumSizeHint functions from QWidget-derived custom widgets
-    # return QSize(-1, -1).
-    # Meaning it will shrink to zero when added to a layout as in control_tab.py
-    # These sizes are from the controller_ui.ui file
     def sizeHint(self):
+        '''
+        sizeHint and minimumSizeHint functions from QWidget-derived custom widgets
+        return QSize(-1, -1). Meaning it will shrink to zero when added to a
+        layout as in control_tab.py. These sizes are from the controller_ui.ui file
+        '''
         return QSize(489, 84)
 
     def minimumSizeHint(self):
@@ -87,8 +105,11 @@ class ControllerWidget(QWidget):
             else:
                 self.ui.connectLED.changeState(False)
         elif command == 'setpoint':
-            self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
-            self.setpoint = self._c_to_k(response['data'])
+            try:
+                self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
+                self.setpoint = self._c_to_k(response['data'])
+            except Exception as e:
+                print(e)
         return
 
     def updateSerial(self, serialObj):
@@ -110,6 +131,7 @@ class ControllerWidget(QWidget):
         except Exception as e:
             print(e)
         else:
+            print('write response: ', response)
             self._handleResponse(command, response)
 
 
