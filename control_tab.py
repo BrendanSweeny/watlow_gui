@@ -1,7 +1,12 @@
+# TODO: Make "set all" temp buttons change color to better indicate which is pressed
+# TODO: Offload controller timer read interval to config file (with an internal default)
+# TODO: Fix the behavior of the "met setpoint" LEDs to update after read, not before
+# TODO: Set all LEDs to red when serial is disconnected
+# TODO: Consider changing the controller LCDs to a label or something more visually appealing
+
 import sys
 import configparser
 import serial
-#import serial.rs485
 from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QVBoxLayout, QPushButton, QButtonGroup
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 from PyQt5.QtCore import pyqtSignal, QTimer, QThreadPool, QObject
@@ -23,7 +28,6 @@ class ControlTabWidget(QWidget):
         self.ui.setupUi(self)
 
         self.serial = serial.Serial()
-        #self.serial.rs485_mode = serial.rs485.RS485Settings()
 
         self.controllerWidgets = None
 
@@ -155,7 +159,7 @@ class ControlTabWidget(QWidget):
         Initiates the QTimer for the read queries (_readTempAll)
         '''
         if not self.readTimer.isActive():
-            self.readTimer.start(3000)
+            self.readTimer.start(30000)
             self._runInThreadpool(self._readTempAll)
         elif self.readTimer.isActive():
             self.readTimer.stop()
