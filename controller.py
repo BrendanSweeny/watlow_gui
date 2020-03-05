@@ -24,6 +24,7 @@ class ControllerWidget(QWidget):
         self.maxTemp = maxTemp
 
         self.setpoint = 0
+        self.currentTemp = 0
 
         # Setup scrollArea entry information:
         self.ui.labelName.setText(self.name)
@@ -98,19 +99,16 @@ class ControllerWidget(QWidget):
             print(response['error'])
             return
         if command == 'currentTemp':
+            self.currentTemp = self._c_to_k(response['data'])
             self.ui.lcdCurrentT.display(self._c_to_k(response['data']))
-            # Status LED:
-            if abs((self._c_to_k(response['data']) - self.setpoint)) < 20:
-                self.ui.connectLED.changeState(True)
-            else:
-                self.ui.connectLED.changeState(False)
         elif command == 'setpoint':
-            try:
-                self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
-                self.setpoint = self._c_to_k(response['data'])
-            except Exception as e:
-                print(e)
-        return
+            self.setpoint = self._c_to_k(response['data'])
+            self.ui.lcdSetpoint.display(self._c_to_k(response['data']))
+        # Status LED:
+        if abs((self.currentTemp - self.setpoint)) < 20:
+            self.ui.connectLED.changeState(True)
+        else:
+            self.ui.connectLED.changeState(False)
 
     def updateSerial(self, serialObj):
         self.controller.updateSerial(serialObj)

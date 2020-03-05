@@ -1,7 +1,5 @@
 # TODO: Make "set all" temp buttons change color to better indicate which is pressed
 # TODO: Offload controller timer read interval to config file (with an internal default)
-# TODO: Fix the behavior of the "met setpoint" LEDs to update after read, not before
-# TODO: Set all LEDs to red when serial is disconnected
 # TODO: Consider changing the controller LCDs to a label or something more visually appealing
 
 import sys
@@ -66,7 +64,7 @@ class ControlTabWidget(QWidget):
 
         # Button group is used primarily for 'exclusive' checked behavior
         self.tempButtons = QButtonGroup()
-        self.tempButtons.setExclusive(True)
+        self.tempButtons.setExclusive(False)
         self.tempButtons.addButton(self.ui.btn100K)
         self.tempButtons.addButton(self.ui.btn200K)
         self.tempButtons.addButton(self.ui.btn400K)
@@ -82,7 +80,7 @@ class ControlTabWidget(QWidget):
 
         # Temperature set buttons:
         for btn in self.tempButtons.buttons():
-            btn.clicked.connect(lambda: self._handleSetTempAll())
+            btn.clicked.connect(lambda: self.buttonGroupSetTempAll())
 
     def _clearLayout(self):
         for i in reversed(range(self.scrollWidgetLayout.count())):
@@ -113,6 +111,8 @@ class ControlTabWidget(QWidget):
             else:
                 self._handleSetTempAll(tempK)
             self.ui.leSetCustomTemp.clear()
+            for btn in self.tempButtons.buttons():
+                btn.setStyleSheet('')
 
     def _k_to_c(self, k):
         return k - 273.15
@@ -128,6 +128,23 @@ class ControlTabWidget(QWidget):
             elif controllerWidget.mode == 'cool' and temp < 25:
                 controllerWidget.write('setpoint', temp)
 
+    def buttonGroupSetTempAll(self):
+        if not self.serial.isOpen() or not self.serial:
+            self.statusEmitted.emit('Serial port is not open!')
+        else:
+            clickedBtn = self.sender()
+            tempK = int(clickedBtn.text().split(' ')[0])
+            self._handleSetTempAll(tempK)
+
+            # Colors selected button based on temperature:
+            for btn in self.tempButtons.buttons():
+                if btn == clickedBtn and tempK > 300:
+                    btn.setStyleSheet('QPushButton {background-color: "red"}')
+                elif btn == clickedBtn and tempK < 300:
+                    btn.setStyleSheet('QPushButton {background-color: "blue"; color: "white"}')
+                else:
+                    btn.setStyleSheet('')
+
     def _handleSetTempAll(self, tempK=None):
         '''
         Creates a worker to run the _setTempAll fn on a seperate thread.
@@ -137,9 +154,6 @@ class ControlTabWidget(QWidget):
         * Attempts to extract temperature from the button text value if not
           passed as an argument (assumes kelvin)
         '''
-        if not tempK:
-            tempK = int(self.sender().text().split(' ')[0])
-
         if self.maxTemp and tempK > self.maxTemp:
             self.statusEmitted.emit('Setpoint exceeds max temperature!')
         else:
@@ -159,7 +173,7 @@ class ControlTabWidget(QWidget):
         Initiates the QTimer for the read queries (_readTempAll)
         '''
         if not self.readTimer.isActive():
-            self.readTimer.start(30000)
+            self.readTimer.start(3000)
             self._runInThreadpool(self._readTempAll)
         elif self.readTimer.isActive():
             self.readTimer.stop()
@@ -242,7 +256,11 @@ class ControlTabWidget(QWidget):
             self.serial.close()
             self.ui.btnSerialConnect.setText('Connect')
             self.ui.connectLED.changeState(False)
+            for address, controller in self.controllerWidgetsDict.items():
+                controller.ui.connectLED.changeState(False)
             self.statusEmitted.emit('Disconnected from {0}'.format(self.serial.port))
+            for btn in self.tempButtons.buttons():
+                btn.setStyleSheet('')
 
     def _passStatus(self, statusStr):
         '''Emits string to main.py to be shown in the status bar'''
