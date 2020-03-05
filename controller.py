@@ -61,14 +61,20 @@ class ControllerWidget(QWidget):
           would often crash program without rasing an error when executed after
           being emitted (or possibly when executed in the threadpool)
         '''
-        tempK = int(self.ui.leSetTemp.text())
-        self.ui.leSetTemp.clear()
-        self.setPointEmitted.emit(lambda: self._handleSetTemp(tempK))
+        try:
+            tempK = int(self.ui.leSetTemp.text())
+        except ValueError as e:
+            print(e)
+            self.statusEmitted.emit('Temperature must be an integer.')
+        else:
+            self.setPointEmitted.emit(lambda: self._handleSetTemp(tempK))
+        finally:
+            self.ui.leSetTemp.clear()
 
     def _handleSetTemp(self, tempK):
         try:
             if self.maxTemp and tempK > self.maxTemp:
-                self.statusEmitted.emit('Setpoint exceeds max temperature!')
+                self.statusEmitted.emit('Setpoint exceeds max temperature.')
             else:
                 self.write('setpoint', self._k_to_c(tempK))
         except Exception as e:

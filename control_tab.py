@@ -1,4 +1,3 @@
-# TODO: Make "set all" temp buttons change color to better indicate which is pressed
 # TODO: Offload controller timer read interval to config file (with an internal default)
 # TODO: Consider changing the controller LCDs to a label or something more visually appealing
 
@@ -102,7 +101,7 @@ class ControlTabWidget(QWidget):
         try:
             tempK = self.ui.leSetCustomTemp.text()
             tempK = int(tempK)
-        except Exception as e:
+        except ValueError as e:
             print(e)
             self.statusEmitted.emit('Temperature must be an integer.')
         else:
@@ -110,9 +109,10 @@ class ControlTabWidget(QWidget):
                 self.statusEmitted.emit('Setpoint exceeds max temperature!')
             else:
                 self._handleSetTempAll(tempK)
-            self.ui.leSetCustomTemp.clear()
             for btn in self.tempButtons.buttons():
                 btn.setStyleSheet('')
+        finally:
+            self.ui.leSetCustomTemp.clear()
 
     def _k_to_c(self, k):
         return k - 273.15
