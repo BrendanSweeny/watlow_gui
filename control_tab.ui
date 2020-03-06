@@ -41,7 +41,7 @@
     <string>200 K</string>
    </property>
    <property name="checkable">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label_11">
@@ -80,7 +80,7 @@
     <string>500 K</string>
    </property>
    <property name="checkable">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label_3">
@@ -219,7 +219,7 @@
     <string>100 K</string>
    </property>
    <property name="checkable">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
   </widget>
   <widget class="QPushButton" name="btn400K">
@@ -240,7 +240,7 @@
     <string>400 K</string>
    </property>
    <property name="checkable">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label_13">
@@ -279,7 +279,7 @@
     <string>600 K</string>
    </property>
    <property name="checkable">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
   </widget>
   <widget class="QPushButton" name="btn700K">
@@ -300,7 +300,7 @@
     <string>700 K</string>
    </property>
    <property name="checkable">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label_4">
