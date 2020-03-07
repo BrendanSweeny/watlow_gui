@@ -1,5 +1,6 @@
 # TODO: Offload controller timer read interval to config file (with an internal default)
 # TODO: Consider changing the controller LCDs to a label or something more visually appealing
+# TODO: Display the config parameters or default parameters somehow, likely means moving parsing to config_tab and emitting a dictionary??
 
 import sys
 import configparser
@@ -28,8 +29,8 @@ class ControlTabWidget(QWidget):
 
         self.controllerWidgets = None
 
-        # Maximum setpoint temperature:
-        self.maxTemp = None
+        # Default maximum setpoint temperature in kelvin:
+        self.maxTemp = 800
 
         # Dictionary that contains controllerWidgets by address/object key/val pairs
         self.controllerWidgetsDict = {}
@@ -49,6 +50,9 @@ class ControlTabWidget(QWidget):
         # Timer that reads controller values at specified interval
         self.readTimer = QTimer(self)
         self.readTimer.timeout.connect(lambda: self._runInThreadpool(self._readTempAll))
+
+        # Default temperature and setpoint read interval in milliseconds:
+        self.readInterval = 60000
 
         # Sets up the scroll widget to have vertical box layout for controllers:
         self.scrollWidget = QWidget()
@@ -173,7 +177,7 @@ class ControlTabWidget(QWidget):
         Initiates the QTimer for the read queries (_readTempAll)
         '''
         if not self.readTimer.isActive():
-            self.readTimer.start(3000)
+            self.readTimer.start(self.readInterval)
             self._runInThreadpool(self._readTempAll)
         elif self.readTimer.isActive():
             self.readTimer.stop()
@@ -276,6 +280,12 @@ class ControlTabWidget(QWidget):
 
         if 'maxtemp' in config['GENERAL'].keys():
             self.maxTemp = float(config['GENERAL']['maxtemp'])
+        else:
+            self.maxTemp = 800
+        if 'readinterval' in config['GENERAL'].keys():
+            self.readInterval = int(config['GENERAL']['readinterval']) * 1000
+        else:
+            self.readInterval = 60000
 
         # Extract Serial Info:
         try:
@@ -307,6 +317,11 @@ class ControlTabWidget(QWidget):
                 controllerWidget.widgetEmitted.connect(self._deleteWidget)
                 controllerWidget.statusEmitted.connect(self._passStatus)
                 controllerWidget.setPointEmitted.connect(self._runInThreadpool)
+
+        if self.serial.isOpen():
+            # Toggles read timer off then on again (reads when toggled on)
+            self._toggleTimerRead()
+            self._toggleTimerRead()
 
     def _runInThreadpool(self, func, *args, **kwargs):
         '''
