@@ -122,7 +122,7 @@ class ControllerWidget(QWidget):
     def read(self, command):
         commandDict = {'currentTemp': '4001', 'setpoint': '7001'}
         try:
-            response = self.controller.write(dataParam=commandDict[command])
+            response = self.controller.readParam(param=commandDict[command])
         except Exception as e:
             print(e)
         else:
@@ -131,7 +131,7 @@ class ControllerWidget(QWidget):
 
     def write(self, command, value):
         try:
-            response = self.controller.set(value)
+            response = self.controller.setTemp(value)
         except Exception as e:
             print(e)
         else:

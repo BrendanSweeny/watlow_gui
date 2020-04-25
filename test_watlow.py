@@ -98,12 +98,12 @@ class TestWatlow(unittest.TestCase):
             result = self.assertEqual(PM3(connection=None, address=test[1])._buildReadRequest(dataParam=test[0]), unhexlify(test[2]), \
                                       msg='dataParam: {0}, adr: {1}, cmd: {2}'.format(test[0], test[1], test[2]))
 
-    def test_buildSetRequest(self):
+    def test_buildSetTempRequest(self):
         '''
         Tests that set temperature requests are built properly based on the
         input dataParam
 
-        _buildSetRequest is also dependent on _headerCheckByte and _dataCheckByte
+        _buildSetTempRequest is also dependent on _headerCheckByte and _dataCheckByte
         '''
         test_data = [
             # Test of form (temperature, address, request)
@@ -114,7 +114,7 @@ class TestWatlow(unittest.TestCase):
         ]
 
         for test in test_data:
-            result = self.assertEqual(PM3(connection=None, address=test[1])._buildSetRequest(value=test[0]), unhexlify(test[2]), \
+            result = self.assertEqual(PM3(connection=None, address=test[1])._buildSetTempRequest(value=test[0]), unhexlify(test[2]), \
                                       msg='val: {0}, adr: {1}, cmd: {2}'.format(test[0], test[1], test[2]))
 
     def test_c_to_f(self):
@@ -159,13 +159,16 @@ class TestWatlow(unittest.TestCase):
         ]
 
         false_test_data = [
-            '55ff060010000b8802030104010108468f3abe434', # Missing character
             '55ff060010000b8802030104010108468f3abe4356', # Incorrect dataChk
-            '55ff060010000b8802030104010108468f3abe43461' # Too long, odd length
+            '55FF060010000B8902030104010108468F3638DD0E', # Incorrect headerChk
         ]
 
         for response in true_test_data:
             result = self.assertTrue(self.test_pm3_address1._validateResponse(unhexlify(response)), \
+                                     msg=response)
+
+        for response in false_test_data:
+            result = self.assertFalse(self.test_pm3_address1._validateResponse(unhexlify(response)), \
                                      msg=response)
 
 # These are all confirmed working requests or responses that can be used to test

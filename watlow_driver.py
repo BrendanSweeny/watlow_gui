@@ -130,7 +130,7 @@ class PM3():
 
         return request
 
-    def _buildSetRequest(self, value):
+    def _buildSetTempRequest(self, value):
         '''
         Takes the set point temperature value, converts to bytes objects, calls
         internal functions to calc check bytes, and assembles/returns the request
@@ -218,7 +218,7 @@ class PM3():
 
         return output
 
-    def write(self, dataParam):
+    def readParam(self, param):
         '''
         Takes a parameter and writes data to the watlow controller at
         object's internal address
@@ -229,7 +229,7 @@ class PM3():
 
         Returns a dict containing the response data and address
         '''
-        request = self._buildReadRequest(dataParam)
+        request = self._buildReadRequest(param)
         print('read request add. ' + str(self.address) + ': ', hexlify(request), len(request))
         #print(request.hex())
         try:
@@ -238,13 +238,11 @@ class PM3():
             print('Exception: ', e)
         else:
             response = self.connection.read(21)
-            #response = self.connection.read(self.connection.inWaiting())
-            #response = self.connection.readline()
             print('read response add ' + str(self.address) + ': ', hexlify(response), len(response))
             output = self._parseResponse(response)
             return output
 
-    def set(self, value):
+    def setTemp(self, value):
         '''
         Changes the watlow PM3 temperature setpoint
 
@@ -252,7 +250,7 @@ class PM3():
         receives and returns response object
         '''
         value = self._c_to_f(value)
-        request = self._buildSetRequest(value)
+        request = self._buildSetTempRequest(value)
         print('set request add. ' + str(self.address) + ': ', hexlify(request), len(request))
 
         try:
