@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QPushButton
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtCore import QSize
 from controller_ui import Ui_Form
-from watlow_driver import PM3
+from pywatlow.watlow import Watlow
 
 class ControllerWidget(QWidget):
 
@@ -36,7 +36,7 @@ class ControllerWidget(QWidget):
             self.ui.cbMode.setCurrentIndex(1)
 
         # Initiate instance of Watlow PM3 Controller:
-        self.controller = PM3(self.connection, address=self.address)
+        self.controller = Watlow(self.connection, address=self.address)
 
         # Signals/Slots:
         self.ui.btnSetTemp.clicked.connect(self._emitSetTemp)
@@ -100,6 +100,12 @@ class ControllerWidget(QWidget):
     def _c_to_k(self, c):
         return c + 273.15
 
+    def _k_to_f(self, k):
+        return ((k - 273.15) * 9) / 5 + 32
+
+    def _f_to_k(self, f):
+        return (5/9) * (f - 32) + 273.15
+
     def _handleResponse(self, command, response):
         if response['error']:
             print(response['error'])
@@ -120,9 +126,9 @@ class ControllerWidget(QWidget):
         self.controller.connection = serialObj
 
     def read(self, command):
-        commandDict = {'currentTemp': '4001', 'setpoint': '7001'}
+        commandDict = {'currentTemp': 4001, 'setpoint': 7001}
         try:
-            response = self.controller.readParam(param=commandDict[command])
+            response = self.controller.readParam(commandDict[command], float)
         except Exception as e:
             print(e)
         else:
@@ -131,7 +137,7 @@ class ControllerWidget(QWidget):
 
     def write(self, command, value):
         try:
-            response = self.controller.setTemp(value)
+            response = self.controller.write(value)
         except Exception as e:
             print(e)
         else:

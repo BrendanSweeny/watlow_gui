@@ -343,6 +343,8 @@ class ControlTabWidget(QWidget):
         self.controllerWidgetsDict[address] = controllerWidget
         self.scrollWidgetLayout.addWidget(controllerWidget)
         controllerWidget.widgetEmitted.connect(self._deleteWidget)
+        controllerWidget.statusEmitted.connect(self._passStatus)
+        controllerWidget.setPointEmitted.connect(self._runInThreadpool)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
