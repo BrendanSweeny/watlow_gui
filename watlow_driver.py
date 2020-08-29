@@ -2,7 +2,6 @@ import serial
 import crcmod
 import struct
 from binascii import unhexlify, hexlify
-import time
 
 class PM3():
     '''
@@ -231,7 +230,6 @@ class PM3():
         '''
         request = self._buildReadRequest(param)
         print('read request add. ' + str(self.address) + ': ', hexlify(request), len(request))
-        #print(request.hex())
         try:
             self.connection.write(request)
         except Exception as e:
@@ -259,8 +257,6 @@ class PM3():
             print('Exception: ', e)
         else:
             bytesResponse = self.connection.read(20)
-            #bytesResponse = self.connection.read(self.connection.inWaiting())
-            #bytesResponse = self.connection.readline()
             print('set response add ' + str(self.address) + ': ', hexlify(bytesResponse), len(bytesResponse))
             output = self._parseResponse(bytesResponse)
             print('output: ', output)

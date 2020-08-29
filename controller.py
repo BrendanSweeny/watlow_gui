@@ -117,7 +117,7 @@ class ControllerWidget(QWidget):
             self.ui.connectLED.changeState(False)
 
     def updateSerial(self, serialObj):
-        self.controller.updateSerial(serialObj)
+        self.controller.connection = serialObj
 
     def read(self, command):
         commandDict = {'currentTemp': '4001', 'setpoint': '7001'}
